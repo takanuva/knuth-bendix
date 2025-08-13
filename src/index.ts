@@ -1,4 +1,5 @@
 import { Term, Substitution, unify } from "./substitution.js"
+import * as kb from "./knuth-bendix.js"
 
 function v(name: number): Term {
     return { type: "var", name }

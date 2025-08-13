@@ -37,16 +37,32 @@ function identical(lhs: Term, rhs: Term): boolean {
     return false;
 }
 
+function occurs(name: number, term: Term): boolean {
+    if (term.type === 'var') {
+        return term.name === name;
+    }
+
+    return term.args.some(arg => occurs(name, arg));
+}
+
 export function unify(lhs: Term, rhs: Term): Substitution | false {
     if(lhs.type === "var") {
         if(rhs.type === "var" && lhs.name === rhs.name) {
             return new Map();
         }
 
+        if(occurs(lhs.name, rhs)) {
+            return false;
+        }
+
         return new Map([[lhs.name, rhs]]);
     }
 
     if(rhs.type === "var") {
+        if(occurs(rhs.name, lhs)) {
+            return false;
+        }
+
         return new Map([[rhs.name, lhs]]);
     }
 
