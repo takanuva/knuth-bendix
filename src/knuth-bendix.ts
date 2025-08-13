@@ -18,4 +18,28 @@ export class KnuthBendix {
         this.equations = [];
         this.rules = [];
     }
+
+    public *listDelete() {
+
+    }
+
+    public *listCompose() {
+
+    }
+
+    public *listSimplify() {
+
+    }
+
+    public *listOrient() {
+
+    }
+
+    public *listCollapse() {
+
+    }
+
+    public *listDeduce() {
+
+    }
 }

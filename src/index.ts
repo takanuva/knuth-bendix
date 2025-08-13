@@ -38,3 +38,5 @@ console.log(show(unify(
     f("append", f("nil"), v(0), v(0)),
     f("append", f("nil"), f("cons", f("zero"), f("nil")), v(1))
 )));
+
+const test = new kb.KnuthBendix();
