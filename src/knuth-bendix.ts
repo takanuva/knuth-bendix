@@ -1,30 +1,65 @@
-import { Term, unify } from "./substitution.js"
+import { Substitution, Term, unify } from "./substitution.js"
+
+type Unification = [Map<string, number>, Substitution | false]
 
 export interface Rule {
-    lhs: Term;
-    rhs: Term;
+    lhs: Formula;
+    rhs: Formula;
 }
 
 export interface Equation {
-    lhs: Term;
-    rhs: Term;
+    lhs: Formula;
+    rhs: Formula;
 }
 
 export type Formula = string | [string, ...Formula[]]
 
 export type Action = DeleteAction
+                   | OrientAction
 
 export type DeleteAction = ["delete", Equation]
+export type OrientAction = ["orient", Equation]
 
 export class KnuthBendix {
     private equations: Equation[];
     private rules: Rule[];
     private names: Map<number, string>;
+    private measures: ((term: Formula) => number)[];
 
     public constructor() {
         this.equations = [];
         this.rules = [];
         this.names = new Map();
+        this.measures = [];
+    }
+
+    public addMeasure(measure: (term: Formula) => number) {
+        this.measures.push(measure);
+    }
+
+    private compare(lhs: Formula, rhs: Formula): number {
+        // Check our formulas, in lexicographical order!
+        for(let f of this.measures) {
+            let x = f(lhs) - f(rhs);
+            if(x == 0) {
+                continue;
+            };
+            return x;
+        }
+
+        // Couldn't decide: same weight!
+        return 0;
+    }
+
+    private serialize(term: Term): Formula {
+        switch(term.type) {
+            case "var": {
+                return this.names.get(term.name)!;
+            }
+            case "fun": {
+                return [term.name, ...term.args.map((x) => this.serialize(x))]
+            }
+        }
     }
 
     private getVar(name: string, variables: Map<string, number>): number {
@@ -49,17 +84,15 @@ export class KnuthBendix {
         return { type: "fun", name, args }
     }
 
-    public addEquation(fst: Formula, snd: Formula) {
+    private unify(lhs: Formula, rhs: Formula): Unification {
         let variables = new Map();
+        let fst = this.parse(lhs, variables);
+        let snd = this.parse(rhs, variables);
 
-        let lhs = this.parse(fst, variables);
-        let rhs = this.parse(snd, variables);
+        return [variables, unify(fst, snd)]
+    }
 
-        let size = this.equations.length;
-        let lhs_str = this.showTerm(lhs);
-        let rhs_str = this.showTerm(rhs);
-        console.log(`Adding equation #${size}: ${lhs_str} = ${rhs_str}.`);
-
+    public addEquation(lhs: Formula, rhs: Formula) {
         this.equations.push({ lhs, rhs });
     }
 
@@ -73,14 +106,17 @@ export class KnuthBendix {
         return `(${name}${args})`;
     }
 
-    private addRule(fst: Term, snd: Term) {
-
+    private addRule(lhs: Formula, rhs: Formula) {
+        this.rules.push({ lhs, rhs });
     }
 
     public perform(action: Action) {
         switch(action[0]) {
             case "delete": {
                 this.delete(action[1]);
+            }
+            case "orient": {
+                this.orient(action[1]);
             }
         }
     }
@@ -95,13 +131,26 @@ export class KnuthBendix {
         }
     }
 
+    private orient(equation: Equation) {
+        // First, we need to remove this equation
+        this.delete(equation);
+
+        // Then proceed to add this as a rule
+        this.addRule(equation.lhs, equation.rhs);
+    }
+
+    public *listActions(): Generator<Action> {
+        yield *this.listDelete();
+        yield *this.listOrient();
+    }
+
     public *listDelete(): Generator<DeleteAction> {
         // Look for equalities such as s = s; notice: the right-hand side should
         // never have variables that don't appear in the left-hand side, so we
         // just check that we can unify both sides (so it's a deep comparison)
         // without changing anything (i.e., they're already the same)
         for(var e of this.equations) {
-            let mgu = unify(e.lhs, e.rhs);
+            let [_, mgu] = this.unify(e.lhs, e.rhs);
             if(mgu && mgu.size == 0) {
                 yield ["delete", e]
             }
@@ -116,8 +165,17 @@ export class KnuthBendix {
 
     }
 
-    public *listOrient() {
+    public *listOrient(): Generator<OrientAction> {
+        // Check our equations for orientable versions
+        for(var e of this.equations) {
+            let comparison = this.compare(e.lhs, e.rhs);
+            if(comparison !== 0) {
+                yield ["orient", e]
+            }
 
+            // This will be a problem later: cannot orient!
+            continue;
+        }
     }
 
     public *listCollapse() {
