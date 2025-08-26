@@ -20,6 +20,16 @@ export type Action = DeleteAction
 export type DeleteAction = ["delete", Equation]
 export type OrientAction = ["orient", Equation]
 
+export function showFormula(formula: Formula): string {
+    if(typeof formula === "string") {
+        return formula.toUpperCase();
+    }
+
+    let [head, ...tail] = formula;
+    let body = [head, ...tail.map(showFormula)].join(" ");
+    return `(${body})`;
+}
+
 export class KnuthBendix {
     private equations: Equation[];
     private rules: Rule[];
@@ -31,6 +41,29 @@ export class KnuthBendix {
         this.rules = [];
         this.names = new Map();
         this.measures = [];
+    }
+
+    public show() {
+        if(this.equations.length > 0) {
+            console.log("Equations:");
+            for(var i = 0; i < this.equations.length; i++) {
+                let lhs = showFormula(this.equations[i]!.lhs);
+                let rhs = showFormula(this.equations[i]!.rhs);
+                console.log(`  #${i} ${lhs} = ${rhs}`);
+            }
+        } else {
+            console.log("There are currently no equations.");
+        }
+        if(this.rules.length > 0) {
+            console.log("Rules:");
+            for(var i = 0; i < this.rules.length; i++) {
+                let lhs = showFormula(this.rules[i]!.lhs);
+                let rhs = showFormula(this.rules[i]!.rhs);
+                console.log(`  #${i} ${lhs} = ${rhs}`);
+            }
+        } else {
+            console.log("There are currently no rules.");
+        }
     }
 
     public addMeasure(measure: (term: Formula) => number) {
@@ -114,9 +147,11 @@ export class KnuthBendix {
         switch(action[0]) {
             case "delete": {
                 this.delete(action[1]);
+                break;
             }
             case "orient": {
                 this.orient(action[1]);
+                break;
             }
         }
     }
@@ -136,7 +171,15 @@ export class KnuthBendix {
         this.delete(equation);
 
         // Then proceed to add this as a rule
-        this.addRule(equation.lhs, equation.rhs);
+        let x = this.compare(equation.lhs, equation.rhs);
+        if(x === 0) {
+            throw "orient: unexpected equation!";
+        }
+        if(x > 0) {
+            this.addRule(equation.lhs, equation.rhs);
+        } else {
+            this.addRule(equation.rhs, equation.lhs);
+        }
     }
 
     public *listActions(): Generator<Action> {

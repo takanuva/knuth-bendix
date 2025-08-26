@@ -89,21 +89,11 @@ function measure2(x: kb.Formula): number {
     throw ["invalid formula", x];
 }
 
-function show(formula: kb.Formula): string {
-    if(typeof formula === "string") {
-        return formula.toUpperCase();
-    }
-
-    let [head, ...tail] = formula;
-    let body = [head, ...tail.map(show)].join(" ");
-    return `(${body})`;
-}
-
 test.addMeasure(measure1);
 test.addMeasure(measure2);
 
 function showState() {
-
+    test.show();
 }
 
 function printActions(actions: kb.Action[]) {
@@ -113,14 +103,14 @@ function printActions(actions: kb.Action[]) {
         let action = actions[i]!;
         switch(action[0]) {
             case "delete": {
-                let lhs = show(action[1].lhs);
-                let rhs = show(action[1].rhs);
+                let lhs = kb.showFormula(action[1].lhs);
+                let rhs = kb.showFormula(action[1].rhs);
                 console.log(`  #${i}: delete ${lhs} = ${rhs}`);
                 break;
             }
             case "orient": {
-                let lhs = show(action[1].lhs);
-                let rhs = show(action[1].rhs);
+                let lhs = kb.showFormula(action[1].lhs);
+                let rhs = kb.showFormula(action[1].rhs);
                 console.log(`  #${i}: orient ${lhs} = ${rhs}`);
                 break;
             }
@@ -138,19 +128,16 @@ function performAction() {
     showState();
     let actions = offerActions();
 
-    try {
-        let answer = reader.question("How to proceed? Call: ");
-        let number = parseInt(answer);
-        if(isNaN(number) || number < 0 || number >= actions.length) {
-            throw "oops";
-        }
-
-        console.log("Doing action!");
-
-    } catch {
+    let answer = reader.question("How to proceed? Call: ");
+    let index = parseInt(answer);
+    if(Number.isInteger(index) && index >= 0 && index < actions.length) {
+        let action = actions[index]!;
+        test.perform(action);
+    } else {
         console.log("Invalid answer, bro.");
         return performAction();
     }
 }
 
 performAction();
+showState();
