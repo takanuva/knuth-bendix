@@ -1,4 +1,4 @@
-import { Term } from "./substitution.js"
+import { Term, unify } from "./substitution.js"
 
 export interface Rule {
     lhs: Term;
@@ -11,6 +11,10 @@ export interface Equation {
 }
 
 export type Formula = string | [string, ...Formula[]]
+
+export type Action = DeleteAction
+
+export type DeleteAction = ["delete", Equation]
 
 export class KnuthBendix {
     private equations: Equation[];
@@ -61,7 +65,7 @@ export class KnuthBendix {
 
     private showTerm(term: Term): string {
         if(term.type === "var") {
-            return this.names.get(term.name)!.toUpperCase();
+            return this.names.get(term.name)!.toUpperCase() + term.name;
         }
 
         let name = term.name;
@@ -73,8 +77,35 @@ export class KnuthBendix {
 
     }
 
-    public *listDelete() {
+    public perform(action: Action) {
+        switch(action[0]) {
+            case "delete": {
+                this.delete(action[1]);
+            }
+        }
+    }
 
+    private delete(equation: Equation) {
+        let index = this.equations.indexOf(equation);
+
+        if(index !== -1) {
+            this.equations.splice(index, 1);
+        } else {
+            throw "delete: unexpected equation!";
+        }
+    }
+
+    public *listDelete(): Generator<DeleteAction> {
+        // Look for equalities such as s = s; notice: the right-hand side should
+        // never have variables that don't appear in the left-hand side, so we
+        // just check that we can unify both sides (so it's a deep comparison)
+        // without changing anything (i.e., they're already the same)
+        for(var e of this.equations) {
+            let mgu = unify(e.lhs, e.rhs);
+            if(mgu && mgu.size == 0) {
+                yield ["delete", e]
+            }
+        }
     }
 
     public *listCompose() {

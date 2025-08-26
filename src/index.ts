@@ -26,3 +26,9 @@ test.addEquation(//idl
     ["comp", ["id"], "s"],
     "s"
 )
+
+// Can we remove this?
+test.addEquation(
+    ["inst", "s", ["lam", "a"]],
+    ["inst", "s", ["lam", "a"]]
+);
